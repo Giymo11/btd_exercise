@@ -12,6 +12,11 @@
 #include <arpa/inet.h>
 #include "esp_netif.h"
 #include "esp_log.h"
+
+#include <stdio.h>                             // standard input and output
+#include "freertos/FreeRTOS.h"                 // for task- and timing-related
+#include "freertos/task.h"                     // operations
+
 #if defined(CONFIG_EXAMPLE_SOCKET_IP_INPUT_STDIN)
 #include "addr_from_stdin.h"
 #endif
@@ -53,16 +58,20 @@ void tcp_client(void)
             ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
             break;
         }
-        ESP_LOGI(TAG, "Socket created, connecting to %s:%d", host_ip, PORT);
+        // ESP_LOGI(TAG, "Socket created, connecting to %s:%d", host_ip, PORT);
+        printf("waiting to connect...");
 
         int err = connect(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
         if (err != 0) {
             ESP_LOGE(TAG, "Socket unable to connect: errno %d", errno);
             break;
         }
-        ESP_LOGI(TAG, "Successfully connected");
+        // ESP_LOGI(TAG, "Successfully connected");
+        printf("connected");
 
         while (1) {
+            vTaskDelay(1000 / portTICK_PERIOD_MS); // 5 second delay
+
             int err = send(sock, payload, strlen(payload), 0);
             if (err < 0) {
                 ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
