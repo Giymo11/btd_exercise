@@ -14,8 +14,11 @@
 #include "esp_log.h"
 
 #include <stdio.h>                             // standard input and output
+#include <stdlib.h>
 #include "freertos/FreeRTOS.h"                 // for task- and timing-related
 #include "freertos/task.h"                     // operations
+#include "esp_random.h"
+
 
 #if defined(CONFIG_EXAMPLE_SOCKET_IP_INPUT_STDIN)
 #include "addr_from_stdin.h"
@@ -31,6 +34,7 @@
 
 static const char *TAG = "example";
 static const char *payload = "Message from ESP32 ";
+static char messageBuffer[32];
 
 
 void tcp_client(void)
@@ -71,8 +75,10 @@ void tcp_client(void)
 
         while (1) {
             vTaskDelay(1000 / portTICK_PERIOD_MS); // 5 second delay
+            int randy = esp_random();
+            payload = itoa(randy, messageBuffer, 10);
 
-            int err = send(sock, payload, strlen(payload), 0);
+            int err = send(sock, messageBuffer, strlen(messageBuffer), 0);
             if (err < 0) {
                 ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
                 break;
