@@ -1,107 +1,155 @@
 /*
- * SPDX-FileCopyrightText: 2022 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ * ESP32 TCP Client - Improved version with CONFIG_EXAMPLE_IPV4 assumption
  */
-#include "sdkconfig.h"
+
+#include <stdio.h>       // For snprintf
+#include <stdlib.h>      // Standard library functions (not strictly needed here anymore)
+
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <errno.h>
-#include <netdb.h>            // struct addrinfo
-#include <arpa/inet.h>
-#include "esp_netif.h"
-#include "esp_log.h"
+#include <netdb.h>       // struct addrinfo, gai_strerror() if using DNS names
+#include <arpa/inet.h>   // inet_pton()
 
-#include <stdio.h>                             // standard input and output
-#include <stdlib.h>
-#include "freertos/FreeRTOS.h"                 // for task- and timing-related
-#include "freertos/task.h"                     // operations
-#include "esp_random.h"
+#include "sdkconfig.h" // For Kconfig options
+#include "esp_netif.h"   // Networking Interface
+#include "esp_log.h"     // Logging framework
+
+#include "freertos/FreeRTOS.h" // FreeRTOS API
+#include "freertos/task.h"     // Task management
+#include "esp_random.h"  // ESP32 Random number generator
 
 
-#if defined(CONFIG_EXAMPLE_SOCKET_IP_INPUT_STDIN)
-#include "addr_from_stdin.h"
+// Configuration checks 
+#if !defined(CONFIG_EXAMPLE_IPV4)
+#error "This application requires CONFIG_EXAMPLE_IPV4 to be defined"
 #endif
 
-#if defined(CONFIG_EXAMPLE_IPV4)
+
 #define HOST_IP_ADDR CONFIG_EXAMPLE_IPV4_ADDR
-#elif defined(CONFIG_EXAMPLE_SOCKET_IP_INPUT_STDIN)
-#define HOST_IP_ADDR ""
-#endif
-
 #define PORT CONFIG_EXAMPLE_PORT
+#define RECONNECT_DELAY_MS 5000
 
-static const char *TAG = "example";
-static const char *payload = "Message from ESP32 ";
-static char messageBuffer[32];
+#define MAX_RX_SIZE 128
+#define MAX_TX_SIZE 32
+
+static const char *TAG = "TCP_CLIENT";
+static char rx_buffer[MAX_RX_SIZE];
+static char tx_buffer[MAX_TX_SIZE];
+
+static int connect_to_server(const char *host_ip, int port) {
+    int addr_family = AF_INET;
+    int ip_protocol = IPPROTO_IP;
+
+    struct sockaddr_in dest_addr;
+    int sock = -1;
+    int err = 0;
+    
+    /* Set up IPv4 connection parameters */
+    memset(&dest_addr, 0, sizeof(dest_addr));
+    dest_addr.sin_family = addr_family;
+    dest_addr.sin_port = htons(port);
+    
+    /* Convert IP address from string to binary form */
+    if (inet_pton(addr_family, host_ip, &dest_addr.sin_addr) != 1) {
+        ESP_LOGE(TAG, "Invalid IP address format");
+        return -1;
+    }
+    
+    sock = socket(addr_family, SOCK_STREAM, ip_protocol);
+    if (sock < 0) {
+        ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+        return -1;
+    }
+    
+    ESP_LOGI(TAG, "Socket created, attempting to connect to %s:%d", host_ip, port);
+
+    /* Connect to server */
+    err = connect(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+    if (err != 0) {
+        ESP_LOGE(TAG, "Socket unable to connect: errno %d", errno);
+        close(sock);
+        return -1;
+    }
+    
+    ESP_LOGI(TAG, "Successfully connected to server");
+    return sock;
+}
+
+static int send_message(int sock, const char *message) {
+    int err = send(sock, message, strlen(message), 0);
+    if (err < 0) {
+        ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
+        return -1;
+    }
+    return err;
+}
+
+static int receive_response(int sock, char *buffer, size_t buffer_size) {
+    int len = recv(sock, buffer, buffer_size - 1, 0);
+    
+    if (len < 0) {
+        ESP_LOGE(TAG, "recv failed: errno %d", errno);
+        return -1;
+    } else if (len == 0) {
+        ESP_LOGW(TAG, "Connection closed by server");
+        return 0;
+    } else {
+        buffer[len] = '\0'; // Null-terminate the received data
+        ESP_LOGI(TAG, "Received %d bytes: %s", len, buffer);
+        return len;
+    }
+}
+
+static int task_one(int sock) {
+    vTaskDelay(pdMS_TO_TICKS(1000)); // 1 second delay
+    int random_num = esp_random();
+    
+    /* Use snprintf instead of itoa for safer, more portable conversion */
+    snprintf(tx_buffer, MAX_TX_SIZE, "%d", random_num);
+
+    return send_message(sock, tx_buffer);
+}
 
 
-void tcp_client(void)
-{
-    char rx_buffer[128];
+void tcp_client(void) {
     char host_ip[] = HOST_IP_ADDR;
-    int addr_family = 0;
-    int ip_protocol = 0;
-
+    int sock = -1;
+    bool connected = false;
+    
+    ESP_LOGI(TAG, "TCP client task starting...");
+    
     while (1) {
-#if defined(CONFIG_EXAMPLE_IPV4)
-        struct sockaddr_in dest_addr;
-        inet_pton(AF_INET, host_ip, &dest_addr.sin_addr);
-        dest_addr.sin_family = AF_INET;
-        dest_addr.sin_port = htons(PORT);
-        addr_family = AF_INET;
-        ip_protocol = IPPROTO_IP;
-#elif defined(CONFIG_EXAMPLE_SOCKET_IP_INPUT_STDIN)
-        struct sockaddr_storage dest_addr = { 0 };
-        ESP_ERROR_CHECK(get_addr_from_stdin(PORT, SOCK_STREAM, &ip_protocol, &addr_family, &dest_addr));
-#endif
-
-        int sock =  socket(addr_family, SOCK_STREAM, ip_protocol);
-        if (sock < 0) {
-            ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
-            break;
-        }
-        // ESP_LOGI(TAG, "Socket created, connecting to %s:%d", host_ip, PORT);
-        printf("waiting to connect...");
-
-        int err = connect(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-        if (err != 0) {
-            ESP_LOGE(TAG, "Socket unable to connect: errno %d", errno);
-            break;
-        }
-        // ESP_LOGI(TAG, "Successfully connected");
-        printf("connected");
-
-        while (1) {
-            vTaskDelay(1000 / portTICK_PERIOD_MS); // 5 second delay
-            int randy = esp_random();
-            payload = itoa(randy, messageBuffer, 10);
-
-            int err = send(sock, messageBuffer, strlen(messageBuffer), 0);
-            if (err < 0) {
-                ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
-                break;
-            }
-
-            int len = recv(sock, rx_buffer, sizeof(rx_buffer) - 1, 0);
-            // Error occurred during receiving
-            if (len < 0) {
-                ESP_LOGE(TAG, "recv failed: errno %d", errno);
-                break;
-            }
-            // Data received
-            else {
-                rx_buffer[len] = 0; // Null-terminate whatever we received and treat like a string
-                ESP_LOGI(TAG, "Received %d bytes from %s:", len, host_ip);
-                ESP_LOGI(TAG, "%s", rx_buffer);
+        if (!connected) {
+            sock = connect_to_server(host_ip, PORT);
+            if (sock >= 0) {
+                connected = true;
+            } else {
+                vTaskDelay(pdMS_TO_TICKS(RECONNECT_DELAY_MS)); // Wait before retrying
+                continue;
             }
         }
 
-        if (sock != -1) {
-            ESP_LOGE(TAG, "Shutting down socket and restarting...");
-            shutdown(sock, 0);
+        int task_res = task_one(sock);
+        if (task_res < 0) {
+            connected = false;
             close(sock);
+            continue;
         }
+        
+        if (receive_response(sock, rx_buffer, MAX_RX_SIZE) < 0) {
+            connected = false;
+            close(sock);
+            continue;
+        }
+    }
+    
+    /* This code is not reached due to the infinite loop,
+       but included for completeness */
+    if (sock != -1) {
+        ESP_LOGI(TAG, "Shutting down socket...");
+        shutdown(sock, 0);
+        close(sock);
     }
 }
