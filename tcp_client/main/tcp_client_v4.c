@@ -12,6 +12,7 @@
 #include <netdb.h>       // struct addrinfo, gai_strerror() if using DNS names
 #include <arpa/inet.h>   // inet_pton()
 #include <driver/i2c.h>
+#include <math.h>
 
 #include "sdkconfig.h" // For Kconfig options
 #include "esp_netif.h"   // Networking Interface
@@ -62,7 +63,31 @@
 static const char *TAG = "TCP_CLIENT";
 static char rx_buffer[MAX_RX_SIZE];
 static char tx_buffer[MAX_TX_SIZE];
-static int64_t last_timestamp = 0;
+
+
+typedef enum {
+    ORIENTATION_NEGATIVE_X = 0,
+    ORIENTATION_POSITIVE_X,
+    ORIENTATION_NEGATIVE_Y,
+    ORIENTATION_POSITIVE_Y,
+    ORIENTATION_NEGATIVE_Z,
+    ORIENTATION_POSITIVE_Z,
+    ORIENTATION_UNDEFINED
+} device_orientation_t;
+
+static const char* orientation_names[] = {
+    "-X",
+    "+X",
+    "-Y",
+    "+Y",
+    "-Z",
+    "+Z",
+    "undefined"
+};
+
+
+
+
 
 static int connect_to_server(const char *host_ip, int port) {
     int sock = -1;
@@ -210,6 +235,38 @@ static void getAccelData(float* ax, float* ay, float* az)
     *az = (float)accZ * aRes;
 }
 
+bool is_gravity(float abs_value) {
+    return abs_value > 0.8 && abs_value < 1.2;
+}
+
+device_orientation_t detect_orientation(float ax, float ay, float az) {
+    // Take absolute values to simplify comparisons
+    float abs_ax = fabsf(ax);
+    float abs_ay = fabsf(ay);
+    float abs_az = fabsf(az);
+    
+    // Find which axis has the dominant acceleration
+    if (abs_ax > abs_ay && abs_ax > abs_az) {        // X axis is dominant
+        if (is_gravity(abs_ax)) {
+            return (ax > 0) ? ORIENTATION_POSITIVE_X : ORIENTATION_NEGATIVE_X;
+        }
+    } 
+    else if (abs_ay > abs_ax && abs_ay > abs_az) {        // Y axis is dominant
+        if (is_gravity(abs_ay)) {
+            return (ay > 0) ? ORIENTATION_POSITIVE_Y : ORIENTATION_NEGATIVE_Y;
+        }
+    } 
+    else if (abs_az > abs_ax && abs_az > abs_ay) {        // Z axis is dominant
+        if (is_gravity(abs_az)) {
+            return (az > 0) ? ORIENTATION_POSITIVE_Z : ORIENTATION_NEGATIVE_Z;
+        }
+    }
+    
+    // If no clear dominant axis or values not in threshold
+    return ORIENTATION_UNDEFINED;
+}
+
+
 static int task_one(int sock) {
     vTaskDelay(pdMS_TO_TICKS(1000)); // 1 second delay
     int random_num = esp_random();
@@ -225,6 +282,7 @@ static int task_one(int sock) {
 }
 
 static int task_two(int sock) {
+    static int64_t last_timestamp = 0;
     float ax, ay, az;
     int64_t timestamp;
     int diff;
@@ -242,6 +300,41 @@ static int task_two(int sock) {
 
     last_timestamp = timestamp;
     return 1;
+}
+
+static int task_three(int sock) {
+    static int64_t last_timestamp = 0;
+    
+    int64_t timestamp;
+    device_orientation_t current_orientation;
+    float ax, ay, az;
+    int diff;
+
+    if (last_timestamp == 0) {
+        last_timestamp = esp_timer_get_time();
+    }
+
+    timestamp = esp_timer_get_time(); // Get current time in microseconds
+    diff = (timestamp - last_timestamp) / 1000;
+    int to_wait = 100 - diff; // .1 second delay
+    if (to_wait < 0) {
+        ESP_LOGW(TAG, "took longer than 100 ms: %d", to_wait);
+    } else {
+        // ESP_LOGI(TAG, "to wait: %d", to_wait);
+        vTaskDelay(pdMS_TO_TICKS(to_wait)); 
+    }
+    last_timestamp = timestamp;
+
+    getAccelData(&ax, &ay, &az);
+    ESP_LOGI(TAG, "acceleration data: %f %f %f, timestamp: %lld, timediff: %d ms", ax, ay, az, timestamp, diff);
+
+    current_orientation = detect_orientation(ax, ay, az);
+    snprintf(tx_buffer, MAX_TX_SIZE, "%s", orientation_names[current_orientation]);
+
+    if(send_message(sock, tx_buffer) < 0) {
+        return -1;
+    }
+    return receive_response(sock, rx_buffer, MAX_RX_SIZE);
 }
 
 
@@ -269,7 +362,7 @@ void tcp_client(void) {
             }
         }
 
-        int task_res = task_two(sock);
+        int task_res = task_three(sock);
         if (task_res < 0) {
             connected = false;
             close(sock);
