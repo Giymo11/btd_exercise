@@ -19,7 +19,8 @@
 
 #include "freertos/FreeRTOS.h" // FreeRTOS API
 #include "freertos/task.h"     // Task management
-#include "esp_random.h"  // ESP32 Random number generator
+#include "esp_random.h"  // ESP32 Random number generator"
+#include "esp_timer.h"
 
 
 // Configuration checks 
@@ -61,6 +62,7 @@
 static const char *TAG = "TCP_CLIENT";
 static char rx_buffer[MAX_RX_SIZE];
 static char tx_buffer[MAX_TX_SIZE];
+static int64_t last_timestamp = 0;
 
 static int connect_to_server(const char *host_ip, int port) {
     int sock = -1;
@@ -224,11 +226,21 @@ static int task_one(int sock) {
 
 static int task_two(int sock) {
     float ax, ay, az;
+    int64_t timestamp;
+    int diff;
+
+    if (last_timestamp == 0) {
+        last_timestamp = esp_timer_get_time();
+    }
 
     vTaskDelay(pdMS_TO_TICKS(100)); // .1 second delay
     getAccelData(&ax, &ay, &az);
 
-    ESP_LOGI(TAG, "acceleration data: %f %f %f", ax, ay, az);
+    timestamp = esp_timer_get_time(); // Get current time in microseconds
+    diff = (timestamp - last_timestamp) / 1000;
+    ESP_LOGI(TAG, "acceleration data: %f %f %f, timestamp: %lld, timediff: %d ms", ax, ay, az, timestamp, diff);
+
+    last_timestamp = timestamp;
     return 1;
 }
 
@@ -237,7 +249,7 @@ void tcp_client(void) {
     char host_ip[] = HOST_IP_ADDR;
     int sock = -1;
     bool connected = false;
-    
+
     // init accelerometer
     ESP_ERROR_CHECK(i2c_master_init());
     ESP_LOGI(TAG, "I2C initialized successfully");
