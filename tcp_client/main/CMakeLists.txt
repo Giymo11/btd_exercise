@@ -8,7 +8,7 @@ endif()
 #                                 INCLUDE_DIRS "."
 #                                 REQUIRES ${requires})
 
-set(srcs "main.c"
+set(srcs "exercise2_main.c"
 	"decode_jpeg.c"
 	"decode_png.c"
 	"pngle.c"
