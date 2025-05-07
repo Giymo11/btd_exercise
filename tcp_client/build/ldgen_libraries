@@ -83,3 +83,6 @@ F:/gozen-data/dev/btd_exercise/tcp_client/build/esp-idf/spiffs/libspiffs.a
 F:/gozen-data/dev/btd_exercise/tcp_client/build/esp-idf/wifi_provisioning/libwifi_provisioning.a
 F:/gozen-data/dev/btd_exercise/tcp_client/build/esp-idf/protocol_examples_common/libprotocol_examples_common.a
 F:/gozen-data/dev/btd_exercise/tcp_client/build/esp-idf/main/libmain.a
+F:/gozen-data/dev/btd_exercise/tcp_client/build/esp-idf/I2Cdev/libI2Cdev.a
+F:/gozen-data/dev/btd_exercise/tcp_client/build/esp-idf/MPU6050/libMPU6050.a
+F:/gozen-data/dev/btd_exercise/tcp_client/build/esp-idf/st7789/libst7789.a

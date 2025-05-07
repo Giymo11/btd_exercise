@@ -5038,6 +5038,44 @@
     {
         "children": [
             {
+                "children": [
+                    {
+                        "children": [],
+                        "depends_on": "<choice DEVICE_SELECT>",
+                        "help": "Device is M5STICK_C_PLUS.",
+                        "id": "M5STICK_C_PLUS",
+                        "name": "M5STICK_C_PLUS",
+                        "range": null,
+                        "title": "M5STICK_C_PLUS",
+                        "type": "bool"
+                    },
+                    {
+                        "children": [],
+                        "depends_on": "<choice DEVICE_SELECT>",
+                        "help": "Device is M5STICK_C_PLUS2.",
+                        "id": "M5STICK_C_PLUS2",
+                        "name": "M5STICK_C_PLUS2",
+                        "range": null,
+                        "title": "M5STICK_C_PLUS2",
+                        "type": "bool"
+                    }
+                ],
+                "depends_on": null,
+                "help": "Select SPI peripheral that controls this bus.",
+                "id": "m5stick-c-plus-configuration-m5stick_c_plus-m5stick_c_plus2",
+                "name": "DEVICE_SELECT",
+                "title": "M5STICK_C_PLUS/M5STICK_C_PLUS2",
+                "type": "choice"
+            }
+        ],
+        "depends_on": null,
+        "id": "m5stick-c-plus-configuration",
+        "title": "M5Stick-C Plus Configuration",
+        "type": "menu"
+    },
+    {
+        "children": [
+            {
                 "children": [],
                 "depends_on": null,
                 "help": null,

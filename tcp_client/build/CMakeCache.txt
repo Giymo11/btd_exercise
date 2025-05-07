@@ -15,7 +15,10 @@
 ########################
 
 //No help, variable specified on the command line.
-CCACHE_ENABLE:UNINITIALIZED=0
+CCACHE_ENABLE:UNINITIALIZED=1
+
+//Path to a program.
+CCACHE_FOUND:FILEPATH=C:/esp-tools/tools/ccache/4.10.2/ccache-4.10.2-windows-x86_64/ccache.exe
 
 //Path to a program.
 CMAKE_ADDR2LINE:FILEPATH=C:/esp-tools/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin/xtensa-esp32-elf-addr2line.exe
@@ -213,7 +216,7 @@ CMAKE_PROJECT_DESCRIPTION:STATIC=
 CMAKE_PROJECT_HOMEPAGE_URL:STATIC=
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=tcp_client
+CMAKE_PROJECT_NAME:STATIC=btd_exercise2
 
 //Value Computed by CMake
 CMAKE_PROJECT_VERSION:STATIC=3.6.2
@@ -355,6 +358,9 @@ PYTHON:UNINITIALIZED=c:\esp-tools\python_env\idf5.4_py3.11_env\Scripts\python.ex
 //No help, variable specified on the command line.
 PYTHON_DEPS_CHECKED:UNINITIALIZED=1
 
+//No help, variable specified on the command line.
+SDKCONFIG:UNINITIALIZED=f:\gozen-data\dev\btd_exercise\tcp_client\sdkconfig
+
 //Allow unsafe builds. These builds ARE NOT SECURE.
 UNSAFE_BUILD:BOOL=OFF
 
@@ -363,6 +369,15 @@ USE_SHARED_MBEDTLS_LIBRARY:BOOL=OFF
 
 //Build Mbed TLS static library.
 USE_STATIC_MBEDTLS_LIBRARY:BOOL=ON
+
+//Value Computed by CMake
+btd_exercise2_BINARY_DIR:STATIC=F:/gozen-data/dev/btd_exercise/tcp_client/build
+
+//Value Computed by CMake
+btd_exercise2_IS_TOP_LEVEL:STATIC=ON
+
+//Value Computed by CMake
+btd_exercise2_SOURCE_DIR:STATIC=F:/gozen-data/dev/btd_exercise/tcp_client
 
 //Value Computed by CMake
 esp-idf_BINARY_DIR:STATIC=F:/gozen-data/dev/btd_exercise/tcp_client/build/esp-idf
@@ -545,7 +560,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=118
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=121
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

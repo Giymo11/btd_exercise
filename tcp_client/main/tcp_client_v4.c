@@ -55,7 +55,11 @@
 #define RECONNECT_DELAY_MS 5000
 
 #define MAX_RX_SIZE 128
-#define MAX_TX_SIZE 32
+#define MAX_TX_SIZE 128
+
+#define SAMPLING_FREQUENCY 100
+
+static const int DELAY_BETWEEN_SAMPLES = 1000 / SAMPLING_FREQUENCY;
 
 static const char *TAG = "TCP_CLIENT";
 static char rx_buffer[MAX_RX_SIZE];
@@ -380,6 +384,55 @@ static int task_four(int sock)
     return 0;
 }
 
+static int send_accel_data(int sock)
+{
+    static int start_time = 0;
+    float ax, ay, az;
+    int64_t timestamp;
+
+    if (start_time == 0)
+        start_time = esp_timer_get_time() / 1000;
+     
+    timestamp = esp_timer_get_time() / 1000;
+    if (timestamp > start_time + 60 * 1000) // end after 60 seconds
+    {
+        snprintf(tx_buffer, MAX_TX_SIZE, "end");
+        send_message(sock, tx_buffer);
+        receive_response(sock, rx_buffer, MAX_RX_SIZE);
+        return -1;
+    }
+
+    getAccelData(&ax, &ay, &az);
+    ESP_LOGI(TAG, "acceleration data: %f %f %f, timestamp: %lld", ax, ay, az, timestamp);
+
+    snprintf(tx_buffer, MAX_TX_SIZE, "%f, %f, %f, ", ax, ay, az);
+    return send_message(sock, tx_buffer);
+}
+
+static int exercise_two(int sock, bool collecting) 
+{
+    static TickType_t last_wake_time = 0;
+
+    if (last_wake_time == 0)
+    {
+        last_wake_time = xTaskGetTickCount();
+    }
+
+    // delay exactly the right amount, and update last_wake_time
+    vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(DELAY_BETWEEN_SAMPLES));
+    if (collecting)
+        return send_accel_data(sock);
+
+    float ax, ay, az;
+    getAccelData(&ax, &ay, &az);
+    float magnitude = sqrt(ax*ax + ay*ay + az*az);
+    
+
+
+
+    return 0;
+}
+
 void tcp_client(void)
 {
     char host_ip[] = HOST_IP_ADDR;
@@ -410,17 +463,16 @@ void tcp_client(void)
             }
         }
 
-        int task_res = task_four(sock);
+        int task_res = exercise_two(sock, false);
         if (task_res < 0)
         {
             connected = false;
             close(sock);
-            continue;
+            break;
         }
     }
 
-    /* This code is not reached due to the infinite loop,
-       but included for completeness */
+
     if (sock != -1)
     {
         ESP_LOGI(TAG, "Shutting down socket...");
