@@ -124,8 +124,21 @@ esp_err_t mountSPIFFS(char *path, char *label, int max_files)
     return ret;
 }
 
-void test_screen(void *pvParameters)
+void test_screen(TFT_t *dev)
 {
+    // Mount SPIFFS File System on FLASH
+    ESP_LOGI(TAG, "Initializing SPIFFS");
+    ESP_ERROR_CHECK(mountSPIFFS("/fonts", "storage1", 8));
+    listSPIFFS("/fonts");
+
+    ESP_ERROR_CHECK(mountSPIFFS("/images", "storage2", 1));
+    listSPIFFS("/images");
+
+    ESP_ERROR_CHECK(mountSPIFFS("/icons", "storage3", 1));
+    listSPIFFS("/icons");
+
+    // Initialize i2c
+    i2c_master_init();
 
 #if CONFIG_M5STICK_C_PLUS
     // power on
@@ -144,49 +157,10 @@ void test_screen(void *pvParameters)
     sgm2578_Enable(SGM2578_ENABLE_GPIO);
 #endif
 
-    TFT_t dev;
-    spi_master_init(&dev, CONFIG_MOSI_GPIO, CONFIG_SCLK_GPIO, CONFIG_CS_GPIO, CONFIG_DC_GPIO, CONFIG_RESET_GPIO, CONFIG_BL_GPIO);
-    lcdInit(&dev, CONFIG_WIDTH, CONFIG_HEIGHT, CONFIG_OFFSETX, CONFIG_OFFSETY, true);
+    spi_master_init(dev, CONFIG_MOSI_GPIO, CONFIG_SCLK_GPIO, CONFIG_CS_GPIO, CONFIG_DC_GPIO, CONFIG_RESET_GPIO, CONFIG_BL_GPIO);
+    lcdInit(dev, CONFIG_WIDTH, CONFIG_HEIGHT, CONFIG_OFFSETX, CONFIG_OFFSETY, true);
 
-    while (1)
-    {
-        lcdFillScreen(&dev, RED);
-        lcdDrawFinish(&dev);
-        ESP_LOGI(__FUNCTION__, "red");
-        WAIT;
-        lcdFillScreen(&dev, GREEN);
-        lcdDrawFinish(&dev);
-        WAIT;
-        lcdFillScreen(&dev, BLUE);
-        lcdDrawFinish(&dev);
-        WAIT;
-        lcdFillScreen(&dev, BLACK);
-        lcdDrawFinish(&dev);
-        WAIT;
-        lcdDrawCircle(&dev, CONFIG_WIDTH / 2, CONFIG_HEIGHT / 2, 30, BLUE);
-        lcdDrawFinish(&dev);
-        WAIT;
-        lcdDrawFillCircle(&dev, CONFIG_WIDTH / 2, CONFIG_HEIGHT / 2, 10, RED);
-        lcdDrawFinish(&dev);
-        WAIT;
-    }
-}
-
-void app_main(void)
-{
-    // Mount SPIFFS File System on FLASH
-    ESP_LOGI(TAG, "Initializing SPIFFS");
-    ESP_ERROR_CHECK(mountSPIFFS("/fonts", "storage1", 8));
-    listSPIFFS("/fonts");
-
-    ESP_ERROR_CHECK(mountSPIFFS("/images", "storage2", 1));
-    listSPIFFS("/images");
-
-    ESP_ERROR_CHECK(mountSPIFFS("/icons", "storage3", 1));
-    listSPIFFS("/icons");
-
-    // Initialize i2c
-    i2c_master_init();
-    
-	xTaskCreate(test_screen, "test", 1024*6, NULL, 2, NULL);
+    lcdFillScreen(dev, RED);
+    lcdDrawFinish(dev);
+    ESP_LOGI(__FUNCTION__, "red");
 }
