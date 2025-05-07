@@ -21,9 +21,9 @@ extern float getAccelMagnitude();
 #define SAMPLING_FREQUENCY 100
 static const int DELAY_BETWEEN_SAMPLES = 1000 / SAMPLING_FREQUENCY;
 
-static const float WALKING_THRESHOLD = 0.1f;
-static const float LPF_CUTOFF = 2.0f;
-static const float HPF_CUTOFF = 2.0f;
+static const float WALKING_THRESHOLD = 0.12f;
+static const float HPF_CUTOFF = 0.9f;
+static const float LPF_CUTOFF = 3.6f;
 
 static const char *TAG = "BTD_MAIN";
 
@@ -84,7 +84,7 @@ void app_main(void)
     lcdDrawFinish(&dev);
 
     int steps = 0;
-    float mean_magnitude = 1.0499f;
+    float mean_magnitude = 1.0449f;
 
     while (true)
     {
