@@ -13,7 +13,7 @@ set(srcs "screen/btd_screen.c"
 	"screen/decode_png.c"
 	"screen/pngle.c"
     "btd_imu.c"
-    "btd_lowpass.c"
+    "btd_bandpass.c"
     "btd_exercise2.c"
 	)
 
