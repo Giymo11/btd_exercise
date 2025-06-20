@@ -8,17 +8,12 @@ endif()
 #                                 INCLUDE_DIRS "."
 #                                 REQUIRES ${requires})
 
-set(srcs "screen/btd_screen.c"
-	"screen/decode_jpeg.c"
-	"screen/decode_png.c"
-	"screen/pngle.c"
-    "btd_imu.c"
+set(srcs 
     "btd_bandpass.c"
-    "btd_exercise2.c"
+    "btd_exercise2.cpp"
     "btd_config.c"
     "btd_wifi.c"
     "btd_vibration.c"
 	)
 
 idf_component_register(SRCS ${srcs} INCLUDE_DIRS ".")
-
