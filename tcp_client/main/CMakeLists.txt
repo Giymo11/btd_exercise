@@ -17,6 +17,7 @@ set(srcs "screen/btd_screen.c"
     "btd_exercise2.c"
     "btd_config.c"
     "btd_wifi.c"
+    "btd_vibration.c"
 	)
 
 idf_component_register(SRCS ${srcs} INCLUDE_DIRS ".")
