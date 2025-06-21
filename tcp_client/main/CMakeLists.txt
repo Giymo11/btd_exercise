@@ -13,10 +13,10 @@ set(srcs
     "btd_battery.cpp"
     "btd_vibration.c"
     "btd_display.cpp"
-    "btd_controller.cpp"
     "btd_config.c"
     "btd_wifi.c"
-   
+    "btd_imu.cpp"
+    "btd_controller.cpp"
 	)
 
 idf_component_register(SRCS ${srcs} INCLUDE_DIRS ".")
