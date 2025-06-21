@@ -28,15 +28,9 @@ extern "C" void app_main(void)
     setup_display();
     printf("Display init end\n");
 
-    while (1)
-    {
-        // Wait for display to initialize
-        display_battery_percentage(get_battery_percentage());
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        display_qr_code();
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        clear_display();
-    }
+    display_battery_percentage(get_battery_percentage());
+    display_qr_code();
+    clear_display();
 
     // init_vibrator();
     // exec_vibration_pattern_a();
