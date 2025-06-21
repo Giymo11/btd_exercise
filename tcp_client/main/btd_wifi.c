@@ -8,11 +8,9 @@
 #include "esp_event.h"
 #include "math.h"
 
-
 #include "btd_wifi.h"
 
 static const char *TAG = "BTD_WIFI";
-
 
 esp_err_t start_wifi_ap(const char *ssid, const char *password)
 {
@@ -37,8 +35,6 @@ esp_err_t stop_wifi_ap()
     ESP_ERROR_CHECK(esp_wifi_stop());
     return esp_wifi_deinit();
 }
-
-
 
 static int compare_wifi_records(const void *a, const void *b)
 {
@@ -74,13 +70,12 @@ static void fill_fingerprint_from_scan(wifi_location_fingerprint_t *fp, wifi_ap_
         strncpy(fp->aps[i].ssid, (char *)ap_info[i].ssid, SSID_MAX_LEN - 1);
         fp->aps[i].ssid[SSID_MAX_LEN - 1] = '\0'; // Ensure null termination
         fp->aps[i].rssi = ap_info[i].rssi;
-    }    
+    }
 }
 
 static esp_err_t scan_and_create_fingerprint(wifi_location_fingerprint_t *fp)
 {
     fp->ap_count = 0;
-    wifi_ap_record_t ap_info[SCAN_LIST_SIZE];
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -92,13 +87,21 @@ static esp_err_t scan_and_create_fingerprint(wifi_location_fingerprint_t *fp)
 
     uint16_t ap_found_count = 0;
     ESP_ERROR_CHECK(esp_wifi_scan_get_ap_num(&ap_found_count));
-    uint16_t max_ap_records = SCAN_LIST_SIZE;
+
     if (ap_found_count != 0)
     {
+        uint16_t max_ap_records = ap_found_count;
+        wifi_ap_record_t *ap_info = malloc(max_ap_records * sizeof(wifi_ap_record_t));
+        if (ap_info == NULL)
+        {
+            ESP_LOGE(TAG, "Failed to allocate memory for AP records");
+            return ESP_ERR_NO_MEM;
+        }
         ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&ap_found_count, ap_info));
         ESP_LOGI(TAG, "Total APs scanned = %u, actual AP number ap_info holds = %u", ap_found_count, max_ap_records);
-        
+
         fill_fingerprint_from_scan(fp, ap_info, ap_found_count, max_ap_records);
+        free(ap_info);
     }
 
     add_location_name(fp);
@@ -108,13 +111,17 @@ static esp_err_t scan_and_create_fingerprint(wifi_location_fingerprint_t *fp)
     return ESP_OK;
 }
 
-static double compare_fingerprints(const wifi_location_fingerprint_t *fp1, const wifi_location_fingerprint_t *fp2) {
+static double compare_fingerprints(const wifi_location_fingerprint_t *fp1, const wifi_location_fingerprint_t *fp2)
+{
     int common_aps = 0;
     double rssi_squared_delta = 0;
 
-    for (int i = 0; i < fp1->ap_count; i++) {
-        for (int j = 0; j < fp2->ap_count; j++) {
-            if (memcmp(fp1->aps[i].bssid, fp2->aps[j].bssid, BSSID_LEN) == 0) {
+    for (int i = 0; i < fp1->ap_count; i++)
+    {
+        for (int j = 0; j < fp2->ap_count; j++)
+        {
+            if (memcmp(fp1->aps[i].bssid, fp2->aps[j].bssid, BSSID_LEN) == 0)
+            {
                 common_aps++;
                 int rssi_delta = fp1->aps[i].rssi - fp2->aps[j].rssi;
                 rssi_squared_delta += rssi_delta * rssi_delta; // Squared difference for similarity
@@ -123,13 +130,15 @@ static double compare_fingerprints(const wifi_location_fingerprint_t *fp1, const
         }
     }
 
-    if (common_aps == 0) return 0;
+    if (common_aps == 0)
+        return 0;
     double common_ratio = (double)common_aps / FINGERPRINT_MAX_APS;
     double rssi_similarity = 1.0 - (rssi_squared_delta / (common_aps * 100 * 100)); // Normalize RSSI delta
     return (0.7 * common_ratio) + (0.3 * rssi_similarity);
 }
 
-esp_err_t get_wifi_location_fingerprint(char *location_name_buffer, size_t buffer_size) {
+esp_err_t get_wifi_location_fingerprint(char *location_name_buffer, size_t buffer_size)
+{
     wifi_location_fingerprint_t fp = {0};
     ESP_ERROR_CHECK(scan_and_create_fingerprint(&fp));
 
