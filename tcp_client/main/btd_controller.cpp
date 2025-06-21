@@ -69,7 +69,7 @@ extern "C" void app_main(void)
     static TickType_t last_wake_time = 0;
     static bool was_walking = false;
     static bool was_stepping = false;
-    static int64_t timestamp = 0;
+    static int64_t timestamp = 0; //@Lea - use it :)
 
     printf("Arduino init\n");
     initArduino();
@@ -91,7 +91,7 @@ extern "C" void app_main(void)
     test_fingerprint();
 
     init_imu();
-    float magnitude = getAccelMagnitude();
+    float magnitude = getAccelMagnitude(); //@Lea - use it :)
     ESP_LOGI(TAG, "acceleration data: %f", magnitude);
 
     if (last_wake_time == 0)
