@@ -61,6 +61,7 @@ void print_status(TFT_t *dev, bool walking, int steps)
 
 void init()
 {
+    ESP_ERROR_CHECK(nvs_flash_erase()); // Erase NVS for testing purposes
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -71,9 +72,9 @@ void test_config()
     btd_config_t config = {0};
     ESP_ERROR_CHECK(btd_read_config(&config));
 
-    ESP_LOGI(TAG, "Configuration loaded: workTime=%d, breakTime=%d, longBreakTime=%d, longBreakSessionCount=%d, wifiPw=%s, breakGestureEnabled=%d",
+    ESP_LOGI(TAG, "Configuration loaded: workTime=%d, breakTime=%d, longBreakTime=%d, longBreakSessionCount=%d, breakGestureEnabled=%d",
              config.workTimeSeconds, config.breakTimeSeconds, config.longBreakTimeSeconds,
-             config.longBreakSessionCount, config.wifiPw, config.breakGestureEnabled);
+             config.longBreakSessionCount, config.breakGestureEnabled);
 }
 
 void test_fingerprint()

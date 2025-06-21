@@ -9,7 +9,6 @@ typedef struct {
     uint16_t longBreakTimeSeconds; // Long break time in seconds
     uint16_t longBreakSessionCount;    // Interval for long breaks
     uint16_t timeoutSeconds;       // Timeout in seconds
-    char wifiPw[32];             // WiFi password
     bool breakGestureEnabled;      // Break gesture on/off
 } btd_config_t;
 

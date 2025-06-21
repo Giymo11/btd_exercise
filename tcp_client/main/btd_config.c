@@ -26,7 +26,6 @@ esp_err_t btd_read_config(btd_config_t *config)
         config->breakTimeSeconds = 5 * 60;
         config->longBreakTimeSeconds = 15 * 60;
         config->longBreakSessionCount = 3;
-        strcpy(config->wifiPw, "default_password");
         config->breakGestureEnabled = true;
         return btd_save_config(config);
     }
