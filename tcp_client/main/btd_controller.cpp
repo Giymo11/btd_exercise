@@ -72,6 +72,27 @@ void test_fingerprint()
     ESP_LOGI(TAG, "Location fingerprint: %s", location_name);
 }
 
+void test_display()
+{
+    int test_time_sec = 4000;
+    while (true)
+    {
+        clear_display();
+        display_battery_percentage(get_battery_percentage());
+        display_time(test_time_sec);
+        test_time_sec--;
+        display_break_bar();
+        delay(1000);
+        clear_display();
+        display_break_msg();
+        delay(1000);
+        clear_display();
+        display_battery_percentage(get_battery_percentage());
+        display_qr_code();
+        delay(1000);
+    }
+}
+
 extern "C" void app_main(void)
 {
     initArduino();
@@ -83,8 +104,7 @@ extern "C" void app_main(void)
 
     init();
 
-    display_battery_percentage(get_battery_percentage());
-    display_qr_code();
+    test_display();
 
     ESP_LOGI(TAG, "Starting ti:ma");
 
@@ -108,8 +128,6 @@ extern "C" void app_main(void)
     init_highpass(&hp, HPF_CUTOFF, (float)SAMPLING_FREQUENCY); // 1 Hz cutoff frequency, 100 Hz sample rate
 
     WAIT;
-    // old:
-    // print_status(&dev, true, 0);
     printf("0\n");
     WAIT;
 
@@ -117,10 +135,8 @@ extern "C" void app_main(void)
     float mean_magnitude = 1.0449f;
 
     // exec_vibration_pattern_a();
-
     while (true)
     {
-
         btn_detect_press();
         // delay exactly the right amount, and update last_wake_time
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(DELAY_BETWEEN_SAMPLES));
@@ -152,8 +168,4 @@ extern "C" void app_main(void)
             // printf("Was_walking: %d\n", was_walking);
         }
     }
-
-    // clear_display();
-    // display_battery_percentage(get_battery_percentage());
-    //  M5.Lcd.printf("Battery: %d%%\n", get_battery_percentage());
 }
