@@ -10,7 +10,7 @@ set(EXTRA_COMPONENT_DIRS components/)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
-project(btd_exercise2)
+project(btd_tima)
 
 
 # Create a SPIFFS image from the contents of the 'font' directory

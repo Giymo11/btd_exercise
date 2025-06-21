@@ -5,6 +5,8 @@
 #include "esp_log.h"
 #include "esp_event.h"
 #include "esp_system.h"
+#include "esp_wifi.h"
+
 #include "btd_vibration.c"
 #include "nvs_flash.h"
 #include "nvs.h"
@@ -19,8 +21,9 @@
 extern "C"
 {
 #include "btd_bandpass.h"
-#include "esp_wifi.h"
 #include "btd_config.h"
+#include "btd_http.h"
+#include "btd_wifi.h"
 }
 
 static const float WALKING_THRESHOLD = 0.12f;
@@ -34,8 +37,6 @@ static const float LPF_CUTOFF = 3.6f;
 static const char *TAG = "BTD_MAIN";
 
 static const int DELAY_BETWEEN_SAMPLES = 1000 / SAMPLING_FREQUENCY;
-
-extern "C" esp_err_t get_wifi_location_fingerprint(char *location_name_buffer, size_t buffer_size);
 
 void init()
 {
@@ -89,6 +90,9 @@ extern "C" void app_main(void)
     test_config();
     test_fingerprint();
 
+    start_wifi_ap("ti:ma", "12345678");
+    ESP_LOGI(TAG, "Wi-Fi AP started");
+
     init_imu();
     float magnitude = getAccelMagnitude();
     ESP_LOGI(TAG, "acceleration data: %f", magnitude);
@@ -127,7 +131,7 @@ extern "C" void app_main(void)
             if (is_stepping)
             {
                 ++steps;
-                printf("was_walking: %d, steps: %d\n", was_walking, steps);
+                // printf("was_walking: %d, steps: %d\n", was_walking, steps);
             }
             was_stepping = is_stepping;
         }
@@ -140,7 +144,7 @@ extern "C" void app_main(void)
         else if (timestamp + 1500 < esp_timer_get_time() / 1000)
         {
             was_walking = false;
-            printf("Was_walking: %d\n", was_walking);
+            // printf("Was_walking: %d\n", was_walking);
         }
     }
 

@@ -24,11 +24,8 @@ typedef struct
     uint8_t ap_count; // Actual number of APs stored (can be less than 3)
 } wifi_location_fingerprint_t;
 
-
-esp_err_t start_wifi_ap(const char *ssid, const char *password);
-esp_err_t stop_wifi_ap();
-
 esp_err_t get_wifi_location_fingerprint(char *location_name_buffer, size_t buffer_size);
 
+esp_err_t stop_wifi();
 
 #endif // WIFI_FINGERPRINT_H
