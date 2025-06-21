@@ -1,40 +1,46 @@
-
-extern "C"
-{
 #include <string.h>
 #include "freertos/FreeRTOS.h" // FreeRTOS API
 #include "freertos/task.h"     // Task management
 #include "esp_timer.h"
 #include "esp_log.h"
-}
+#include "btd_vibration.c"
 
 #include "Arduino.h"
 #include "M5StickCPlus.h"
 
+#include "btd_battery.h"
+#include "btd_display.h"
+
 #define INTERVAL 400
 #define WAIT vTaskDelay(INTERVAL)
-
-extern "C" void init_vibrator(void);
-extern "C" void exec_vibration_pattern_a(void);
-extern "C" void exec_vibration_pattern_b(void);
 
 static const char *TAG = "BTD_MAIN";
 
 extern "C" void app_main(void)
 {
+    printf("Arduino init\n");
     initArduino();
+    printf("M5 init\n");
+
     M5.begin();
-    M5.Lcd.begin();
-    M5.Lcd.setRotation(3);
+    printf("Display init start\n");
 
-    init_vibrator();
-    exec_vibration_pattern_a();
+    setup_display();
+    printf("Display init end\n");
 
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setCursor(0, 0, 1);
-    M5.Lcd.printf("AXP Temp: %.1fC \r\n", M5.Axp.GetTempInAXP192());
-    M5.Lcd.printf("Bat:\r\n  V: %.3fv  I: %.3fma\r\n", M5.Axp.GetBatVoltage(), M5.Axp.GetBatCurrent());
-    M5.Lcd.printf("USB:\r\n  V: %.3fv  I: %.3fma\r\n", M5.Axp.GetVBusVoltage(), M5.Axp.GetVBusCurrent());
-    M5.Lcd.printf("5V-In:\r\n  V: %.3fv  I: %.3fma\r\n", M5.Axp.GetVinVoltage(), M5.Axp.GetVinCurrent());
-    M5.Lcd.printf("Bat power %.3fmw", M5.Axp.GetBatPower());
+    while (1)
+    {
+        // Wait for display to initialize
+        display_battery_percentage(get_battery_percentage());
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        display_qr_code();
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        clear_display();
+    }
+
+    // init_vibrator();
+    // exec_vibration_pattern_a();
+    // clear_display();
+    // display_battery_percentage(get_battery_percentage());
+    //  M5.Lcd.printf("Battery: %d%%\n", get_battery_percentage());
 }

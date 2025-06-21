@@ -2,7 +2,7 @@
 #include "freertos/FreeRTOS.h" // FreeRTOS API
 #include "freertos/task.h"
 
-#define VIBRATOR_GPIO 26
+static const gpio_num_t VIBRATOR_GPIO = GPIO_NUM_26;
 
 void init_vibrator(void)
 {
