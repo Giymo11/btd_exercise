@@ -15,6 +15,8 @@
 #include "btd_battery.h"
 #include "btd_display.h"
 #include "btd_imu.h"
+#include "btd_states.h"
+#include "btd_button.h"
 
 extern "C"
 {
@@ -112,6 +114,8 @@ extern "C" void app_main(void)
 
     while (true)
     {
+
+        btn_detect_press();
         // delay exactly the right amount, and update last_wake_time
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(DELAY_BETWEEN_SAMPLES));
         float rawValue = getAccelMagnitude() - mean_magnitude;
