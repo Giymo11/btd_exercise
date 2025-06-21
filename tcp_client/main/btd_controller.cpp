@@ -33,18 +33,21 @@ static const float LPF_CUTOFF = 3.6f;
 #define WAIT vTaskDelay(INTERVAL)
 #define SAMPLING_FREQUENCY 100
 
-static const char *TAG = "BTD_MAIN";
+static const char *TAG = "BTD_CONTROLLER";
 
 static const int DELAY_BETWEEN_SAMPLES = 1000 / SAMPLING_FREQUENCY;
 
 extern "C" esp_err_t get_wifi_location_fingerprint(char *location_name_buffer, size_t buffer_size);
 
-void init()
+void init() // pls put all your inits here
 {
+    M5.begin();
+    init_imu();
+    setup_display();
+    init_vibrator();
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
-    // ESP_ERROR_CHECK(esp_event_loop_create_default());
-    // /\ DONT CALL!!! -> Already initialised in M5.begin()
+    ESP_LOGI(TAG, "inits completed");
 }
 
 void test_config()
@@ -66,31 +69,23 @@ void test_fingerprint()
 
 extern "C" void app_main(void)
 {
+    initArduino();
+
     static TickType_t last_wake_time = 0;
     static bool was_walking = false;
     static bool was_stepping = false;
     static int64_t timestamp = 0; //@Lea - use it :)
 
-    printf("Arduino init\n");
-    initArduino();
-    printf("M5 init\n");
-
-    M5.begin();
-    printf("Display init start\n");
-
-    setup_display();
-    printf("Display init end\n");
+    init();
 
     display_battery_percentage(get_battery_percentage());
     display_qr_code();
 
     ESP_LOGI(TAG, "Starting ti:ma");
-    init();
 
     test_config();
     test_fingerprint();
 
-    init_imu();
     float magnitude = getAccelMagnitude(); //@Lea - use it :)
     ESP_LOGI(TAG, "acceleration data: %f", magnitude);
 
@@ -111,6 +106,8 @@ extern "C" void app_main(void)
 
     int steps = 0;
     float mean_magnitude = 1.0449f;
+
+    // exec_vibration_pattern_a();
 
     while (true)
     {
@@ -147,8 +144,6 @@ extern "C" void app_main(void)
         }
     }
 
-    // init_vibrator();
-    // exec_vibration_pattern_a();
     // clear_display();
     // display_battery_percentage(get_battery_percentage());
     //  M5.Lcd.printf("Battery: %d%%\n", get_battery_percentage());
