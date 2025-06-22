@@ -22,11 +22,8 @@ esp_err_t btd_read_config(btd_config_t *config)
     {
         nvs_close(handle);
         ESP_LOGI(TAG, "No configuration found, using defaults.");
-        config->workTimeSeconds = 25 * 60;
-        config->breakTimeSeconds = 5 * 60;
-        config->longBreakTimeSeconds = 15 * 60;
-        config->longBreakSessionCount = 3;
-        config->breakGestureEnabled = true;
+        // Initialize config with default values
+        memcpy(config, &DEFAULT_CONFIG, sizeof(btd_config_t));
         return btd_save_config(config);
     }
     ESP_ERROR_CHECK(err);

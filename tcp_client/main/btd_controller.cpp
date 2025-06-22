@@ -41,10 +41,11 @@ static const int DELAY_BETWEEN_SAMPLES = 1000 / SAMPLING_FREQUENCY;
 void init()
 {
     // ESP_ERROR_CHECK(nvs_flash_erase()); // Erase NVS for testing purposes
-    ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_netif_init());
     // ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_event_loop_create_default(); // apparently its still needed??? even tho it errors? heck if I know
     // /\ DONT CALL!!! -> Already initialised in M5.begin()
+    ESP_ERROR_CHECK(nvs_flash_init());
 }
 
 void test_config()
@@ -88,10 +89,10 @@ extern "C" void app_main(void)
     init();
 
     test_config();
-    test_fingerprint();
+    //test_fingerprint();
 
-    start_wifi_ap("ti:ma", "12345678");
-    ESP_LOGI(TAG, "Wi-Fi AP started");
+    start_http_server("ti:ma", "12345678");
+    ESP_LOGI(TAG, "HTTP server started");
 
     init_imu();
     float magnitude = getAccelMagnitude();
