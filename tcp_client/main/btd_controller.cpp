@@ -17,6 +17,8 @@
 #include "btd_battery.h"
 #include "btd_display.h"
 #include "btd_imu.h"
+#include "btd_states.h"
+#include "btd_button.h"
 
 extern "C"
 {
@@ -34,18 +36,23 @@ static const float LPF_CUTOFF = 3.6f;
 #define WAIT vTaskDelay(INTERVAL)
 #define SAMPLING_FREQUENCY 100
 
-static const char *TAG = "BTD_MAIN";
+static const char *TAG = "BTD_CONTROLLER";
 
 static const int DELAY_BETWEEN_SAMPLES = 1000 / SAMPLING_FREQUENCY;
 
-void init()
+void init() // pls put all your inits here
 {
-    // ESP_ERROR_CHECK(nvs_flash_erase()); // Erase NVS for testing purposes
-    ESP_ERROR_CHECK(esp_netif_init());
-    // ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_event_loop_create_default(); // apparently its still needed??? even tho it errors? heck if I know
-    // /\ DONT CALL!!! -> Already initialised in M5.begin()
+    M5.begin();
+    init_imu();
+    setup_display();
+    init_vibrator();
     ESP_ERROR_CHECK(nvs_flash_init());
+    // apparently its still needed??? even tho it errors? heck if I know
+    // but yea, dont check if it errors - it just worksTM, sorry for the hack
+    esp_event_loop_create_default(); 
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_LOGI(TAG, "inits completed");
+
 }
 
 void test_config()
@@ -67,26 +74,19 @@ void test_fingerprint()
 
 extern "C" void app_main(void)
 {
+    initArduino();
+
     static TickType_t last_wake_time = 0;
     static bool was_walking = false;
     static bool was_stepping = false;
-    static int64_t timestamp = 0;
+    static int64_t timestamp = 0; //@Lea - use it :)
 
-    printf("Arduino init\n");
-    initArduino();
-    printf("M5 init\n");
-
-    M5.begin();
-    printf("Display init start\n");
-
-    setup_display();
-    printf("Display init end\n");
+    init();
 
     display_battery_percentage(get_battery_percentage());
     display_qr_code();
 
     ESP_LOGI(TAG, "Starting ti:ma");
-    init();
 
     test_config();
     test_fingerprint();
@@ -95,7 +95,7 @@ extern "C" void app_main(void)
     ESP_LOGI(TAG, "HTTP server started");
 
     init_imu();
-    float magnitude = getAccelMagnitude();
+    float magnitude = getAccelMagnitude(); //@Lea - use it :)
     ESP_LOGI(TAG, "acceleration data: %f", magnitude);
 
     if (last_wake_time == 0)
@@ -116,8 +116,12 @@ extern "C" void app_main(void)
     int steps = 0;
     float mean_magnitude = 1.0449f;
 
+    // exec_vibration_pattern_a();
+
     while (true)
     {
+
+        btn_detect_press();
         // delay exactly the right amount, and update last_wake_time
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(DELAY_BETWEEN_SAMPLES));
         float rawValue = getAccelMagnitude() - mean_magnitude;
@@ -149,8 +153,6 @@ extern "C" void app_main(void)
         }
     }
 
-    // init_vibrator();
-    // exec_vibration_pattern_a();
     // clear_display();
     // display_battery_percentage(get_battery_percentage());
     //  M5.Lcd.printf("Battery: %d%%\n", get_battery_percentage());
