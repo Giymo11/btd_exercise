@@ -24,8 +24,22 @@ typedef struct
     uint8_t ap_count; // Actual number of APs stored (can be less than 3)
 } wifi_location_fingerprint_t;
 
+/* * @brief Creates a Wi-Fi location fingerprint by scanning for nearby access points.
+ * 
+ * This function scans for Wi-Fi access points and creates a location name based on the strongest signals.
+ * OUTPUT:
+ * - location_name_buffer: Buffer to store the location name.
+ * INPUT:
+ * - buffer_size: Size of the location name buffer.
+ * @return ESP_OK on success, or an error code on failure.
+ */
 esp_err_t get_wifi_location_fingerprint(char *location_name_buffer, size_t buffer_size);
 
+/* * @brief Stops the Wi-Fi interface and deinitializes it.
+ * 
+ * This function stops the Wi-Fi interface and deinitializes it, releasing any resources used.
+ * @return ESP_OK on success, or an error code on failure.
+ */
 esp_err_t stop_wifi();
 
 #endif // WIFI_FINGERPRINT_H
