@@ -23,5 +23,6 @@ static const btd_config_t DEFAULT_CONFIG = {
 
 esp_err_t btd_read_config(btd_config_t *config);
 esp_err_t btd_save_config(const btd_config_t *config);
+esp_err_t btd_delete_config(void);
 
 #endif // BTD_CONFIG_H

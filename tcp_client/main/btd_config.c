@@ -49,3 +49,10 @@ esp_err_t btd_save_config(const btd_config_t *config)
     nvs_close(handle);
     return err;
 }
+
+esp_err_t btd_delete_config(void)
+{
+    ESP_ERROR_CHECK(nvs_flash_erase()); // Erase NVS to reset configuration
+    return nvs_flash_init(); // Reinitialize NVS
+}
+

@@ -89,7 +89,7 @@ extern "C" void app_main(void)
     init();
 
     test_config();
-    //test_fingerprint();
+    test_fingerprint();
 
     start_http_server("ti:ma", "12345678");
     ESP_LOGI(TAG, "HTTP server started");

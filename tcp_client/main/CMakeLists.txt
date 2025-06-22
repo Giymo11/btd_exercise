@@ -17,6 +17,7 @@ set(srcs
     "btd_wifi.c"
     "btd_imu.cpp"
     "btd_controller.cpp"
+    "btd_webui.cpp"
     "btd_http.c"
 	)
 

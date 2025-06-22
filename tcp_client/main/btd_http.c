@@ -9,6 +9,7 @@
 
 #include "btd_config.h"
 #include "btd_http.h"
+#include "btd_webui.h"
 
 
 static const char *TAG = "BTD_HTTP";
@@ -19,6 +20,9 @@ static httpd_handle_t server = NULL;
 
 // --- forward declarations of the handler functions
 esp_err_t get_config_handler(httpd_req_t *req);
+esp_err_t save_config_handler(httpd_req_t *req);
+esp_err_t factoryreset_handler(httpd_req_t *req);
+esp_err_t root_handler(httpd_req_t *req);
 
 
 
@@ -80,15 +84,37 @@ esp_err_t start_http_server(const char *ssid, const char *password)
         return ret;
     }
 
-    // Register the GET handler for configuration
-    httpd_uri_t get_config_uri = {
-        .uri       = "/config",
-        .method    = HTTP_GET,
-        .handler   = get_config_handler,
-        .user_ctx  = NULL
+    httpd_uri_t uris[] = {
+        {
+            .uri       = "/config",
+            .method    = HTTP_GET,
+            .handler   = get_config_handler,
+            .user_ctx  = NULL
+        },
+        {
+            .uri       = "/config",
+            .method    = HTTP_POST,
+            .handler   = save_config_handler,
+            .user_ctx  = NULL
+        },
+        {
+            .uri       = "/factoryreset",
+            .method    = HTTP_POST,
+            .handler   = factoryreset_handler,
+            .user_ctx  = NULL
+        },
+        {
+            .uri       = "/",
+            .method    = HTTP_GET,
+            .handler   = root_handler,
+            .user_ctx  = NULL
+        }
     };
-    
-    httpd_register_uri_handler(server, &get_config_uri);
+    // Register URI handlers
+    for (int i = 0; i < sizeof(uris) / sizeof(uris[0]); i++)
+    {
+        ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uris[i]));
+    }
     
     ESP_LOGI(TAG, "HTTP server started successfully");
     return ESP_OK;
@@ -163,5 +189,69 @@ cleanup:
 }
 
 
+esp_err_t factoryreset_handler(httpd_req_t *req)
+{
+    esp_err_t err = btd_delete_config(); // Reset configuration to factory defaults
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to reset configuration: %s", esp_err_to_name(err));
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to reset configuration");
+        return err;
+    }
+
+    ESP_LOGI(TAG, "Configuration reset to factory defaults");
+    httpd_resp_send(req, "Configuration reset to factory defaults", HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+
+esp_err_t root_handler(httpd_req_t *req)
+{
+    // const char *response = "<html><body><h1>Welcome to the BTD HTTP Server</h1>"
+    //                       "<p>Use /config to get the current configuration.</p>"
+    //                       "<p>Use /factoryreset to reset to factory defaults.</p></body></html>";
+
+    const char *response = get_web_ui_html();
+    return httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
+}
+
+esp_err_t save_config_handler(httpd_req_t *req)
+{
+    char content[256];
+    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
+    if (ret <= 0)
+    {
+        ESP_LOGE(TAG, "Failed to receive request body");
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to receive request body");
+    }
+    content[ret] = '\0'; // Null-terminate the received data
+
+    cJSON *json = cJSON_Parse(content);
+    if (!json)
+    {
+        ESP_LOGE(TAG, "Failed to parse JSON: %s", cJSON_GetErrorPtr());
+        return httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON format");
+    }
+
+    btd_config_t config;
+    config.workTimeSeconds = cJSON_GetObjectItem(json, "workTimeSeconds")->valueint;
+    config.breakTimeSeconds = cJSON_GetObjectItem(json, "breakTimeSeconds")->valueint;
+    config.longBreakTimeSeconds = cJSON_GetObjectItem(json, "longBreakTimeSeconds")->valueint;
+    config.longBreakSessionCount = cJSON_GetObjectItem(json, "longBreakSessionCount")->valueint;
+    config.timeoutSeconds = cJSON_GetObjectItem(json, "timeoutSeconds")->valueint;
+    config.breakGestureEnabled = cJSON_IsTrue(cJSON_GetObjectItem(json, "breakGestureEnabled"));
+
+    esp_err_t err = btd_save_config(&config);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to save configuration: %s", esp_err_to_name(err));
+        cJSON_Delete(json);
+        return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to save configuration");
+    }
+
+    cJSON_Delete(json);
+    httpd_resp_send(req, "Configuration saved successfully", HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
 
 
