@@ -15,6 +15,7 @@
 #include "btd_battery.h"
 #include "btd_display.h"
 #include "btd_imu.h"
+#include "btd_movement.h"
 
 extern "C"
 {
@@ -22,10 +23,6 @@ extern "C"
 #include "esp_wifi.h"
 #include "btd_config.h"
 }
-
-static const float WALKING_THRESHOLD = 0.12f;
-static const float HPF_CUTOFF = 0.9f;
-static const float LPF_CUTOFF = 3.6f;
 
 #define INTERVAL 400
 #define WAIT vTaskDelay(INTERVAL)
@@ -65,9 +62,6 @@ void test_fingerprint()
 extern "C" void app_main(void)
 {
     static TickType_t last_wake_time = 0;
-    static bool was_walking = false;
-    static bool was_stepping = false;
-    static int64_t timestamp = 0;
 
     printf("Arduino init\n");
     initArduino();
@@ -97,50 +91,26 @@ extern "C" void app_main(void)
         last_wake_time = xTaskGetTickCount();
     }
 
-    BandPassFilter lp, hp;
-    init_lowpass(&lp, LPF_CUTOFF, (float)SAMPLING_FREQUENCY);  // 3 Hz cutoff frequency, 100 Hz sample rate
-    init_highpass(&hp, HPF_CUTOFF, (float)SAMPLING_FREQUENCY); // 1 Hz cutoff frequency, 100 Hz sample rate
-
     WAIT;
     // old:
     // print_status(&dev, true, 0);
     printf("0\n");
     WAIT;
+    
+    init_movement_detection();
 
-    int steps = 0;
-    float mean_magnitude = 1.0449f;
 
     while (true)
     {
         // delay exactly the right amount, and update last_wake_time
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(DELAY_BETWEEN_SAMPLES));
-        float rawValue = getAccelMagnitude() - mean_magnitude;
-        float filteredValue = apply_filter(&hp, rawValue);
-        filteredValue = apply_filter(&lp, filteredValue);
-        // ESP_LOGI(TAG, "Raw: %.2f, Filtered: %.2f\n", rawValue, filteredValue);
 
-        bool is_stepping = filteredValue > WALKING_THRESHOLD;
+        bool walking = is_walking(getAccelMagnitude(), esp_timer_get_time() / 1000);
 
-        if (is_stepping != was_stepping)
-        {
-            if (is_stepping)
-            {
-                ++steps;
-                printf("was_walking: %d, steps: %d\n", was_walking, steps);
-            }
-            was_stepping = is_stepping;
-        }
+        bool break_gesture_detected = detect_break_gesture(getAccelMagnitude(), esp_timer_get_time() / 1000);
 
-        if (is_stepping)
-        {
-            was_walking = true;
-            timestamp = esp_timer_get_time() / 1000;
-        }
-        else if (timestamp + 1500 < esp_timer_get_time() / 1000)
-        {
-            was_walking = false;
-            printf("Was_walking: %d\n", was_walking);
-        }
+        bool auto_off = should_auto_off(getAccelMagnitude(), esp_timer_get_time() / 1000);
+
     }
 
     // init_vibrator();
