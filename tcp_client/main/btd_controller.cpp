@@ -19,6 +19,8 @@
 #include "btd_imu.h"
 #include "btd_states.h"
 #include "btd_button.h"
+#include "btd_audio.h"
+#include "btd_movement.h"
 
 extern "C"
 {
@@ -27,10 +29,6 @@ extern "C"
 #include "btd_http.h"
 #include "btd_wifi.h"
 }
-
-static const float WALKING_THRESHOLD = 0.12f;
-static const float HPF_CUTOFF = 0.9f;
-static const float LPF_CUTOFF = 3.6f;
 
 #define INTERVAL 400
 #define WAIT vTaskDelay(INTERVAL)
@@ -99,13 +97,19 @@ extern "C" void app_main(void)
     initArduino();
 
     static TickType_t last_wake_time = 0;
-    static bool was_walking = false;
-    static bool was_stepping = false;
-    static int64_t timestamp = 0; //@Lea - use it :)
 
-    init();
+    printf("Arduino init\n");
+    initArduino();
+    printf("M5 init\n");
 
-    // test_display();
+    M5.begin();
+    printf("Display init start\n");
+
+    setup_display();
+    printf("Display init end\n");
+
+    display_battery_percentage(get_battery_percentage());
+    display_qr_code();
 
     ESP_LOGI(TAG, "Starting ti:ma");
 
@@ -119,21 +123,19 @@ extern "C" void app_main(void)
     float magnitude = getAccelMagnitude(); //@Lea - use it :)
     ESP_LOGI(TAG, "acceleration data: %f", magnitude);
 
+    init_microphone();
+    printf("Microphone init end\n");
+
     if (last_wake_time == 0)
     {
         last_wake_time = xTaskGetTickCount();
     }
 
-    BandPassFilter lp, hp;
-    init_lowpass(&lp, LPF_CUTOFF, (float)SAMPLING_FREQUENCY);  // 3 Hz cutoff frequency, 100 Hz sample rate
-    init_highpass(&hp, HPF_CUTOFF, (float)SAMPLING_FREQUENCY); // 1 Hz cutoff frequency, 100 Hz sample rate
-
     WAIT;
     printf("0\n");
     WAIT;
 
-    int steps = 0;
-    float mean_magnitude = 1.0449f;
+    init_movement_detection();
 
     // exec_vibration_pattern_a();
     while (true)
@@ -141,32 +143,18 @@ extern "C" void app_main(void)
         btn_detect_press();
         // delay exactly the right amount, and update last_wake_time
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(DELAY_BETWEEN_SAMPLES));
-        float rawValue = getAccelMagnitude() - mean_magnitude;
-        float filteredValue = apply_filter(&hp, rawValue);
-        filteredValue = apply_filter(&lp, filteredValue);
-        // ESP_LOGI(TAG, "Raw: %.2f, Filtered: %.2f\n", rawValue, filteredValue);
 
-        bool is_stepping = filteredValue > WALKING_THRESHOLD;
+        bool is_above_threshold = is_volume_above_threshold(esp_timer_get_time() / 1000);
 
-        if (is_stepping != was_stepping)
-        {
-            if (is_stepping)
-            {
-                ++steps;
-                // printf("was_walking: %d, steps: %d\n", was_walking, steps);
-            }
-            was_stepping = is_stepping;
-        }
+        // TODO: session startzeit und ende wird noch dafür gebraucht
+        // float get_loud_percentage(session_start_ms, session_end_ms);
 
-        if (is_stepping)
-        {
-            was_walking = true;
-            timestamp = esp_timer_get_time() / 1000;
-        }
-        else if (timestamp + 1500 < esp_timer_get_time() / 1000)
-        {
-            was_walking = false;
-            // printf("Was_walking: %d\n", was_walking);
-        }
+        bool walking = is_walking(getAccelMagnitude(), esp_timer_get_time() / 1000);
+
+        bool break_gesture_detected = detect_break_gesture(getAccelMagnitude(), esp_timer_get_time() / 1000);
+
+        bool auto_off = should_auto_off(getAccelMagnitude(), esp_timer_get_time() / 1000);
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
