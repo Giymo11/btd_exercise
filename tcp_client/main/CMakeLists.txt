@@ -12,6 +12,7 @@ set(srcs
     "btd_bandpass.c"
     "btd_battery.cpp"
     "btd_movement.cpp"
+    "btd_audio.cpp"
     "btd_vibration.c"
     "btd_display.cpp"
     "btd_config.c"

@@ -15,6 +15,7 @@
 #include "btd_battery.h"
 #include "btd_display.h"
 #include "btd_imu.h"
+#include "btd_audio.h"
 #include "btd_movement.h"
 
 extern "C"
@@ -86,6 +87,9 @@ extern "C" void app_main(void)
     float magnitude = getAccelMagnitude();
     ESP_LOGI(TAG, "acceleration data: %f", magnitude);
 
+    init_microphone();
+    printf("Microphone init end\n");
+
     if (last_wake_time == 0)
     {
         last_wake_time = xTaskGetTickCount();
@@ -105,11 +109,18 @@ extern "C" void app_main(void)
         // delay exactly the right amount, and update last_wake_time
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(DELAY_BETWEEN_SAMPLES));
 
+        bool is_above_threshold = is_volume_above_threshold(esp_timer_get_time() / 1000);
+
+        //TODO: session startzeit und ende wird noch dafür gebraucht
+        //float get_loud_percentage(session_start_ms, session_end_ms);
+
         bool walking = is_walking(getAccelMagnitude(), esp_timer_get_time() / 1000);
 
         bool break_gesture_detected = detect_break_gesture(getAccelMagnitude(), esp_timer_get_time() / 1000);
 
         bool auto_off = should_auto_off(getAccelMagnitude(), esp_timer_get_time() / 1000);
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
 
     }
 
