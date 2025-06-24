@@ -46,13 +46,14 @@ void init() // pls put all your inits here
     init_imu();
     setup_display();
     init_vibrator();
+    ESP_ERROR_CHECK(nvs_flash_erase()); // IMPORTANT! Erase NVS at first startup, comment out to persist data
+                                        // TODO Delete in final vers
     ESP_ERROR_CHECK(nvs_flash_init());
     // apparently its still needed??? even tho it errors? heck if I know
     // but yea, dont check if it errors - it just worksTM, sorry for the hack
-    esp_event_loop_create_default(); 
+    esp_event_loop_create_default();
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_LOGI(TAG, "inits completed");
-
 }
 
 void test_config()
@@ -104,7 +105,7 @@ extern "C" void app_main(void)
 
     init();
 
-    test_display();
+    // test_display();
 
     ESP_LOGI(TAG, "Starting ti:ma");
 
