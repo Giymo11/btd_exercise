@@ -374,7 +374,7 @@ extern "C" void app_main(void)
             last_state = current_state;
         }
 
-        switch (current_state)
+        switch (current_state) // == IN-BETWEEN HANDLERS
         {
         case STATE_AWAKE:
             if (handle_awake())
