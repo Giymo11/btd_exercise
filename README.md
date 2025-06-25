@@ -32,6 +32,7 @@ jedes State hat 3 Schritte:
 
 ### Wichtiges zu beachten
 * alles ist im main
+* spiffs partitions habe ich gelöscht, da wir sie nicht mehr brauchen + factory partition erweitert da es knapp wurde mit dem Platz XD
 * in init() wird folgendes Code ausgeführt. Dadurch wird config nicht persistiert, das müsste man dann auskommentieren nachdem man nvs einmal erased hat :)
 ```
 ESP_ERROR_CHECK(nvs_flash_erase()); // IMPORTANT! Erase NVS at first startup, comment out to persist data
