@@ -46,12 +46,12 @@ static int session_counter = 0;
 
 static int break_sec_config = 0;
 static int break_sec = 0;
-static bool break_gesture = true;
+static bool break_gesture_config = true;
 
 static int longbreak_sec_config = 0;
 static int longbreak_sess_config = 0;
 
-// Wifi handler for checking if anyone connected to AP for automatic switch
+// Wifi handler for checking if anyone connected to AP for automatic QR code switch
 static volatile bool someone_connected = false;
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
@@ -215,7 +215,7 @@ void start_working()
     break_sec = break_sec_config;
     longbreak_sec_config = config.longBreakTimeSeconds + 1;
     longbreak_sess_config = config.longBreakSessionCount;
-    break_gesture = config.breakGestureEnabled;
+    break_gesture_config = config.breakGestureEnabled;
     session_counter++;
     xTaskCreate(countdown_task, "working_sec_countdown", 2048, &working_sec, 5, &working_task_handle);
 }
@@ -233,7 +233,7 @@ bool handle_working()
     if (btn == 'B')
     {
         current_state = STATE_AWAKE;
-        stop_working();
+        return false;
     }
 
     float magnitude = getAccelMagnitude();
@@ -255,7 +255,7 @@ bool handle_working()
         return true;
     }
 
-    if (break_gesture_detected)
+    if (break_gesture_detected && break_gesture_config)
     {
         // TODO CSV protocol break gesture
         return true;
@@ -309,7 +309,7 @@ bool handle_break()
     if (btn == 'B')
     {
         current_state = STATE_AWAKE;
-        stop_break();
+        return false;
     }
 
     if (break_sec == 0)

@@ -32,6 +32,8 @@ void display_wifi_code(void)
     M5.Lcd.setTextSize(2);
     M5.Lcd.setCursor(10, 50, 2);
     M5.Lcd.print("Conn.");
+    M5.Lcd.setCursor(10, 75, 2);
+    M5.Lcd.print("WiFi");
     M5.Lcd.pushImage(100, 0, 135, 135, wifi_code);
 }
 
@@ -40,6 +42,8 @@ void display_link_code(void)
     M5.Lcd.setTextSize(2);
     M5.Lcd.setCursor(10, 50, 2);
     M5.Lcd.print("Open");
+    M5.Lcd.setCursor(10, 75, 2);
+    M5.Lcd.print("Config");
     M5.Lcd.pushImage(100, 0, 135, 135, link_code);
 }
 
