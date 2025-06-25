@@ -42,13 +42,14 @@ static btd_state_t current_state = STATE_INIT;
 
 static btd_config_t config = {0};
 static int working_sec = 0;
+static int session_counter = 0;
 
+static int break_sec_config = 0;
 static int break_sec = 0;
 static bool break_gesture = true;
-static int break_counter = 0;
 
-static int longbreak_sec = 0;
-static int longbreak_sess_count = 0;
+static int longbreak_sec_config = 0;
+static int longbreak_sess_config = 0;
 
 // Wifi handler for checking if anyone connected to AP for automatic switch
 static volatile bool someone_connected = false;
@@ -210,11 +211,20 @@ void start_working()
     vTaskDelay(pdMS_TO_TICKS(1000));
     // vibration_pattern_a(); TODO fix vibrations
     working_sec = config.workTimeSeconds + 1;
-    break_sec = config.breakTimeSeconds + 1;
-    longbreak_sec = config.longBreakTimeSeconds + 1;
-    longbreak_sess_count = config.longBreakSessionCount;
+    break_sec_config = config.breakTimeSeconds + 1;
+    break_sec = break_sec_config;
+    longbreak_sec_config = config.longBreakTimeSeconds + 1;
+    longbreak_sess_config = config.longBreakSessionCount;
     break_gesture = config.breakGestureEnabled;
+    session_counter++;
     xTaskCreate(countdown_task, "working_sec_countdown", 2048, &working_sec, 5, &working_task_handle);
+}
+
+void stop_working()
+{
+    ESP_LOGI(TAG, "Stop working");
+    vTaskDelete(working_task_handle);
+    working_task_handle = NULL;
 }
 
 bool handle_working()
@@ -223,6 +233,7 @@ bool handle_working()
     if (btn == 'B')
     {
         current_state = STATE_AWAKE;
+        stop_working();
     }
 
     float magnitude = getAccelMagnitude();
@@ -264,22 +275,31 @@ bool handle_working()
     return false;
 }
 
-void stop_working()
-{
-    ESP_LOGI(TAG, "Stop working");
-    vTaskDelete(working_task_handle);
-    working_task_handle = NULL;
-}
-
 // Working state END -------------------------------------------
 
 // break state START -------------------------------------------
 
 void start_break()
 {
+    if (session_counter == longbreak_sess_config)
+    {
+        break_sec = longbreak_sec_config;
+        session_counter = 0;
+    }
+    else
+    {
+        break_sec = break_sec_config;
+    }
     display_break_info_screen(get_battery_percentage());
     vTaskDelay(pdMS_TO_TICKS(1000));
     xTaskCreate(countdown_task, "break_sec_countdown", 2048, &break_sec, 5, &break_task_handle);
+}
+
+void stop_break()
+{
+    ESP_LOGI(TAG, "Stop break");
+    vTaskDelete(break_task_handle);
+    break_task_handle = NULL;
 }
 
 bool handle_break()
@@ -289,6 +309,7 @@ bool handle_break()
     if (btn == 'B')
     {
         current_state = STATE_AWAKE;
+        stop_break();
     }
 
     if (break_sec == 0)
@@ -297,13 +318,6 @@ bool handle_break()
     }
 
     return false;
-}
-
-void stop_break()
-{
-    ESP_LOGI(TAG, "Stop break");
-    vTaskDelete(break_task_handle);
-    break_task_handle = NULL;
 }
 
 // break state END -------------------------------------------
