@@ -50,7 +50,7 @@ static int break_counter = 0;
 static int longbreak_sec = 0;
 static int longbreak_sess_count = 0;
 
-// Wifi handler for checking if anyone connected to AP
+// Wifi handler for checking if anyone connected to AP for automatic switch
 static volatile bool someone_connected = false;
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base,
@@ -111,6 +111,7 @@ void init() // pls put all your inits here
     ESP_LOGI(TAG, "inits completed");
 }
 
+// Tests START -------------------------------------------
 void test_config()
 {
     btd_config_t test_config = {0};
@@ -149,6 +150,7 @@ void test_display()
         delay(1000);
     }
 }
+// Tests END -------------------------------------------
 
 // Awake state START -------------------------------------------
 void start_awake()
@@ -183,10 +185,10 @@ bool handle_awake()
         {
             clear_display();
             awake_step = 1;
-            return true; // Transition
+            return true; // -> Transition
         }
     }
-    return false; // No transition
+    return false; // -> No transition
 }
 
 void stop_awake()
@@ -194,27 +196,8 @@ void stop_awake()
     stop_http_server();
     ESP_LOGI(TAG, "HTTP server stopped");
 }
+
 // Awake state END -------------------------------------------
-
-// Working state START -------------------------------------------
-// TaskHandle_t working_sec_task_handle = NULL;
-
-// void working_sec_task(void *pvParameters)
-// {
-//     while (1)
-//     {
-//         if (current_state == STATE_WORKING && working_sec > 0)
-//         {
-//             working_sec--;
-//             ESP_LOGI("WORKING_SEC_TASK", "working_sec: %d", working_sec);
-//             clear_display();
-//             display_time(working_sec);
-//             display_working_bar();
-//             display_battery_percentage(get_battery_percentage());
-//         }
-//         vTaskDelay(pdMS_TO_TICKS(1000)); // Wait 1 second
-//     }
-// }
 
 void start_working()
 {
@@ -223,14 +206,12 @@ void start_working()
     ESP_LOGI(TAG, "Prod. Configuration loaded: workTime=%d, breakTime=%d, longBreakTime=%d, longBreakSessionCount=%d, breakGestureEnabled=%d",
              config.workTimeSeconds, config.breakTimeSeconds, config.longBreakTimeSeconds,
              config.longBreakSessionCount, config.breakGestureEnabled);
-    clear_display();
-    display_working_msg();
-    display_battery_percentage(get_battery_percentage());
+    display_working_info_screen(get_battery_percentage());
     vTaskDelay(pdMS_TO_TICKS(1000));
     // vibration_pattern_a(); TODO fix vibrations
-    working_sec = config.workTimeSeconds;
-    break_sec = config.breakTimeSeconds;
-    longbreak_sec = config.longBreakTimeSeconds;
+    working_sec = config.workTimeSeconds + 1;
+    break_sec = config.breakTimeSeconds + 1;
+    longbreak_sec = config.longBreakTimeSeconds + 1;
     longbreak_sess_count = config.longBreakSessionCount;
     break_gesture = config.breakGestureEnabled;
     xTaskCreate(countdown_task, "working_sec_countdown", 2048, &working_sec, 5, &working_task_handle);
@@ -296,9 +277,7 @@ void stop_working()
 
 void start_break()
 {
-    clear_display();
-    display_break_msg();
-    display_battery_percentage(get_battery_percentage());
+    display_break_info_screen(get_battery_percentage());
     vTaskDelay(pdMS_TO_TICKS(1000));
     xTaskCreate(countdown_task, "break_sec_countdown", 2048, &break_sec, 5, &break_task_handle);
 }
@@ -397,15 +376,12 @@ extern "C" void app_main(void)
             if (handle_working())
             {
                 current_state = STATE_BREAK;
-                printf("Transitioning to break state\n");
+                ESP_LOGI(TAG, "Stop Transitioning to break state.\n");
             }
 
             if (working_sec != last_displayed_working_sec)
             {
-                clear_display();
-                display_time(working_sec);
-                display_working_bar();
-                display_battery_percentage(get_battery_percentage());
+                display_working_time(working_sec, get_battery_percentage());
                 last_displayed_working_sec = working_sec;
             }
 
@@ -416,22 +392,19 @@ extern "C" void app_main(void)
             if (handle_break())
             {
                 current_state = STATE_WORKING;
-                printf("Transitioning to working state\n");
+                ESP_LOGI(TAG, "Stop Transitioning to working state.\n");
             }
 
             if (break_sec != last_displayed_break_sec)
             {
-                clear_display();
-                display_time(break_sec);
-                display_break_bar();
-                display_battery_percentage(get_battery_percentage());
+                display_break_time(break_sec, get_battery_percentage());
                 last_displayed_break_sec = break_sec;
             }
 
             vTaskDelay(pdMS_TO_TICKS(200));
             break;
         default:
-            vTaskDelay(pdMS_TO_TICKS(200)); // Run every 200 ms
+            vTaskDelay(pdMS_TO_TICKS(200));
             break;
         }
     }

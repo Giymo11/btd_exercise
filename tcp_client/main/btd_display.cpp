@@ -71,6 +71,13 @@ void display_break_bar(void)
     M5.Lcd.setTextColor(WHITE);
 }
 
+void display_break_info_screen(int battery)
+{
+    clear_display();
+    display_break_msg();
+    display_battery_percentage(battery);
+}
+
 void display_working_msg(void)
 {
     M5.Lcd.setTextSize(2);
@@ -87,4 +94,27 @@ void display_working_bar(void)
     M5.Lcd.setTextColor(PINK);
     M5.Lcd.print("FOCUS");
     M5.Lcd.setTextColor(WHITE);
+}
+
+void display_break_time(int break_sec, int battery)
+{
+    clear_display();
+    display_time(break_sec);
+    display_break_bar();
+    display_battery_percentage(battery);
+}
+
+void display_working_info_screen(int battery)
+{
+    clear_display();
+    display_working_msg();
+    display_battery_percentage(battery);
+}
+
+void display_working_time(int working_sec, int battery)
+{
+    clear_display();
+    display_time(working_sec);
+    display_working_bar();
+    display_battery_percentage(battery);
 }
