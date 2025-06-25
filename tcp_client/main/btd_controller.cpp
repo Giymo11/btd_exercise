@@ -28,6 +28,7 @@ extern "C"
 #include "btd_config.h"
 #include "btd_http.h"
 #include "btd_wifi.h"
+#include "btd_stats.h"
 }
 
 #define INTERVAL 400
@@ -96,7 +97,7 @@ void init() // pls put all your inits here
     init_imu();
     setup_display();
     init_vibrator();
-    ESP_ERROR_CHECK(nvs_flash_erase()); // IMPORTANT! Erase NVS at first startup, comment out to persist data
+    // ESP_ERROR_CHECK(nvs_flash_erase()); // IMPORTANT! Erase NVS at first startup, comment out to persist data
                                         // TODO Delete in final vers
     ESP_ERROR_CHECK(nvs_flash_init());
     // apparently its still needed??? even tho it errors? heck if I know
@@ -131,6 +132,19 @@ void test_fingerprint()
     char location_name[32] = {0}; // [32] instead of the constant MAX_TEXT_CHARS
     ESP_ERROR_CHECK(get_wifi_location_fingerprint(location_name, sizeof(location_name)));
     ESP_LOGI(TAG, "Location fingerprint: %s", location_name);
+}
+
+void test_stats()
+{
+    session_stats_t stats = {0};
+    stats.duration_seconds = 3600; // Example duration in seconds
+    strncpy(stats.name, "At Work", sizeof(stats.name) - 1);
+    stats.name[sizeof(stats.name) - 1] = '\0'; // Ensure null termination
+    stats.mic_level = 75; // Example microphone level
+
+    ESP_ERROR_CHECK(record_work_session(&stats));
+    ESP_LOGI(TAG, "Session recorded: ID=%ld, Duration=%ld, Name=%s, Mic Level=%d",
+             stats.session_id, stats.duration_seconds, stats.name, stats.mic_level);
 }
 
 void test_display()
@@ -338,6 +352,7 @@ extern "C" void app_main(void)
 
     test_config();
     test_fingerprint();
+    test_stats();
 
     current_state = STATE_AWAKE;
 

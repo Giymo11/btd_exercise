@@ -57,6 +57,7 @@ static const char* WEB_UI_HTML_CONTENT = R"RAW_HTML(
     <hr style="margin-top: 30px; border-top: 1px solid #eee;">
     <h2>Advanced</h2>
     <button id="reset-button" class="reset-btn">Factory Reset</button>
+    <button id="download-button" class="reset-btn" onclick="window.location.href='/stats'">Download Stats</button>
 </div>
 
 <script>

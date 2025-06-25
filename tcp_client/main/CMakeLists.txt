@@ -23,6 +23,7 @@ set(srcs
     "btd_webui.cpp"
     "btd_http.c"
     "btd_qr.cpp"
+    "btd_stats.c"
 	)
 
 idf_component_register(SRCS ${srcs} INCLUDE_DIRS ".")

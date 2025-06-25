@@ -10,6 +10,8 @@
 #include "btd_config.h"
 #include "btd_http.h"
 #include "btd_webui.h"
+#include "btd_wifi.h"
+#include "btd_stats.h"
 
 
 static const char *TAG = "BTD_HTTP";
@@ -23,6 +25,7 @@ esp_err_t get_config_handler(httpd_req_t *req);
 esp_err_t save_config_handler(httpd_req_t *req);
 esp_err_t factoryreset_handler(httpd_req_t *req);
 esp_err_t root_handler(httpd_req_t *req);
+esp_err_t stats_handler(httpd_req_t *req);
 
 
 
@@ -107,6 +110,12 @@ esp_err_t start_http_server(const char *ssid, const char *password)
             .uri       = "/",
             .method    = HTTP_GET,
             .handler   = root_handler,
+            .user_ctx  = NULL
+        },
+        {
+            .uri       = "/stats",
+            .method    = HTTP_GET,
+            .handler   = stats_handler,
             .user_ctx  = NULL
         }
     };
@@ -253,5 +262,52 @@ esp_err_t save_config_handler(httpd_req_t *req)
     httpd_resp_send(req, "Configuration saved successfully", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
+
+// retuns all sessions as csv
+esp_err_t stats_handler(httpd_req_t *req)
+{
+    session_stats_t stats[32]; // Array to hold session stats
+    size_t count = sizeof(stats) / sizeof(stats[0]);
+    esp_err_t err = get_all_work_sessions(stats, &count);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to get work sessions: %s", esp_err_to_name(err));
+        return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Failed to get work sessions");
+    }
+    if (count == 0)
+    {
+        ESP_LOGI(TAG, "No work sessions found");
+        return httpd_resp_send(req, "No work sessions found", HTTPD_RESP_USE_STRLEN);
+    }
+    // Create a CSV response
+    char response[2048];
+    size_t response_len = 0;
+    response_len += snprintf(response, sizeof(response), "Session ID,Duration (s),Name,Mic Level\n");
+    for (size_t i = 0; i < count; i++)
+    {
+        response_len += snprintf(response + response_len, sizeof(response) - response_len,
+                                 "%lu,%lu,%s,%u\n",
+                                 stats[i].session_id,
+                                 stats[i].duration_seconds,
+                                 stats[i].name,
+                                 stats[i].mic_level);
+        if (response_len >= sizeof(response))
+        {
+            ESP_LOGE(TAG, "Response buffer overflow");
+            return httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Response buffer overflow");
+        }
+    }
+    // Send the CSV response
+    esp_err_t resp_err = httpd_resp_send(req, response, response_len);
+    if (resp_err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to send response: %s", esp_err_to_name(resp_err));
+        return resp_err;
+    }
+    ESP_LOGI(TAG, "Work sessions sent successfully");
+    return ESP_OK;
+}
+
+
 
 
