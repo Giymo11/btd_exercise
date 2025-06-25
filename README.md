@@ -32,6 +32,7 @@ jedes State hat 3 Schritte:
 
 ### Wichtiges zu beachten
 * alles ist im main
+* M5Stick schaltet sich wegen Auto-off nach 5 Min aus -> man muss ihn manuell einschalten sodass man flashen kann!
 * spiffs partitions habe ich gelöscht, da wir sie nicht mehr brauchen + factory partition erweitert da es knapp wurde mit dem Platz XD
 * in init() wird folgendes Code ausgeführt. Dadurch wird config nicht persistiert, das müsste man dann auskommentieren nachdem man nvs einmal erased hat :)
 ```
