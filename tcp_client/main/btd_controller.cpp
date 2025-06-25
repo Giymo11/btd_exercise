@@ -51,6 +51,9 @@ static bool break_gesture_config = true;
 static int longbreak_sec_config = 0;
 static int longbreak_sess_config = 0;
 
+static int64_t session_start_time_ms = 0;
+static int64_t session_end_time_ms = 0;
+
 // Wifi handler for checking if anyone connected to AP for automatic QR code switch
 static volatile bool someone_connected = false;
 
@@ -210,6 +213,7 @@ void start_working()
     display_working_info_screen(get_battery_percentage());
     vTaskDelay(pdMS_TO_TICKS(1000));
     // vibration_pattern_a(); TODO fix vibrations
+    session_start_time_ms = esp_timer_get_time() / 1000; 
     working_sec = config.workTimeSeconds + 1;
     break_sec_config = config.breakTimeSeconds + 1;
     break_sec = break_sec_config;
@@ -222,6 +226,13 @@ void start_working()
 
 void stop_working()
 {
+    session_end_time_ms = esp_timer_get_time() / 1000;
+    float loud_percent = get_loud_percentage(session_start_time_ms, session_end_time_ms);
+    int64_t loud_time_duration_ms = get_total_loud_duration_ms();
+    ESP_LOGI(TAG, "Lautstärkeanteil in dieser Session: %.2f%%", loud_percent); //TODO noch entfernen sobald es in der statistik ist
+    ESP_LOGI(TAG, "Lautstärke dauer in dieser Session: %ld", (long)loud_time_duration_ms); //TODO noch entfernen sobald es in der statistik ist
+    //TODO noch in der statistik dann anzeigen lassen...
+
     ESP_LOGI(TAG, "Stop working");
     vTaskDelete(working_task_handle);
     working_task_handle = NULL;
@@ -243,11 +254,6 @@ bool handle_working()
     bool walking = is_walking(magnitude, timestamp);
     bool break_gesture_detected = detect_break_gesture(magnitude, timestamp);
     bool auto_off = should_auto_off(magnitude, timestamp);
-
-    if (is_above_threshold)
-    {
-        // TODO CSV protocol
-    }
 
     if (walking)
     {
