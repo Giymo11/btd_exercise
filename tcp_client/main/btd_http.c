@@ -12,13 +12,12 @@
 #include "btd_webui.h"
 #include "btd_wifi.h"
 #include "btd_stats.h"
-
+#include "freertos/semphr.h"
 
 static const char *TAG = "BTD_HTTP";
 
 static esp_netif_t *netif = NULL; // Pointer to the network interface, if needed
 static httpd_handle_t server = NULL;
-
 
 // --- forward declarations of the handler functions
 esp_err_t get_config_handler(httpd_req_t *req);
@@ -27,13 +26,11 @@ esp_err_t factoryreset_handler(httpd_req_t *req);
 esp_err_t root_handler(httpd_req_t *req);
 esp_err_t stats_handler(httpd_req_t *req);
 
-
-
 esp_err_t start_wifi_ap(const char *ssid, const char *password)
 {
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    
+
     netif = esp_netif_create_default_wifi_ap();
     if (netif == NULL)
     {
@@ -88,43 +85,32 @@ esp_err_t start_http_server(const char *ssid, const char *password)
     }
 
     httpd_uri_t uris[] = {
-        {
-            .uri       = "/config",
-            .method    = HTTP_GET,
-            .handler   = get_config_handler,
-            .user_ctx  = NULL
-        },
-        {
-            .uri       = "/config",
-            .method    = HTTP_POST,
-            .handler   = save_config_handler,
-            .user_ctx  = NULL
-        },
-        {
-            .uri       = "/factoryreset",
-            .method    = HTTP_POST,
-            .handler   = factoryreset_handler,
-            .user_ctx  = NULL
-        },
-        {
-            .uri       = "/",
-            .method    = HTTP_GET,
-            .handler   = root_handler,
-            .user_ctx  = NULL
-        },
-        {
-            .uri       = "/stats",
-            .method    = HTTP_GET,
-            .handler   = stats_handler,
-            .user_ctx  = NULL
-        }
-    };
+        {.uri = "/config",
+         .method = HTTP_GET,
+         .handler = get_config_handler,
+         .user_ctx = NULL},
+        {.uri = "/config",
+         .method = HTTP_POST,
+         .handler = save_config_handler,
+         .user_ctx = NULL},
+        {.uri = "/factoryreset",
+         .method = HTTP_POST,
+         .handler = factoryreset_handler,
+         .user_ctx = NULL},
+        {.uri = "/",
+         .method = HTTP_GET,
+         .handler = root_handler,
+         .user_ctx = NULL},
+        {.uri = "/stats",
+         .method = HTTP_GET,
+         .handler = stats_handler,
+         .user_ctx = NULL}};
     // Register URI handlers
     for (int i = 0; i < sizeof(uris) / sizeof(uris[0]); i++)
     {
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &uris[i]));
     }
-    
+
     ESP_LOGI(TAG, "HTTP server started successfully");
     return ESP_OK;
 }
@@ -150,7 +136,7 @@ esp_err_t get_config_handler(httpd_req_t *req)
     esp_err_t resp_err = ESP_OK;
 
     // Create a JSON response with the configuration
-    resp_err= btd_read_config(&config);
+    resp_err = btd_read_config(&config);
     if (resp_err != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to read configuration: %s", esp_err_to_name(resp_err));
@@ -192,11 +178,12 @@ esp_err_t get_config_handler(httpd_req_t *req)
     ESP_LOGI(TAG, "Configuration sent successfully");
 
 cleanup:
-    if (response) free(response);
-    if (json) cJSON_Delete(json);
+    if (response)
+        free(response);
+    if (json)
+        cJSON_Delete(json);
     return resp_err;
 }
-
 
 esp_err_t factoryreset_handler(httpd_req_t *req)
 {
@@ -212,7 +199,6 @@ esp_err_t factoryreset_handler(httpd_req_t *req)
     httpd_resp_send(req, "Configuration reset to factory defaults", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
-
 
 esp_err_t root_handler(httpd_req_t *req)
 {
@@ -266,9 +252,14 @@ esp_err_t save_config_handler(httpd_req_t *req)
 // retuns all sessions as csv
 esp_err_t stats_handler(httpd_req_t *req)
 {
-    session_stats_t stats[32]; // Array to hold session stats
+    static session_stats_t stats[32];
+    static char response[2048];
     size_t count = sizeof(stats) / sizeof(stats[0]);
+    if (nvs_mutex)
+        xSemaphoreTake(nvs_mutex, portMAX_DELAY);
     esp_err_t err = get_all_work_sessions(stats, &count);
+    if (nvs_mutex)
+        xSemaphoreGive(nvs_mutex);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to get work sessions: %s", esp_err_to_name(err));
@@ -280,7 +271,6 @@ esp_err_t stats_handler(httpd_req_t *req)
         return httpd_resp_send(req, "No work sessions found", HTTPD_RESP_USE_STRLEN);
     }
     // Create a CSV response
-    char response[2048];
     size_t response_len = 0;
     response_len += snprintf(response, sizeof(response), "Session ID,Duration (s),Name,Mic Level\n");
     for (size_t i = 0; i < count; i++)
@@ -307,7 +297,3 @@ esp_err_t stats_handler(httpd_req_t *req)
     ESP_LOGI(TAG, "Work sessions sent successfully");
     return ESP_OK;
 }
-
-
-
-
